@@ -1,0 +1,334 @@
+@import "tailwindcss";
+
+/*
+  RSVPme's look: a wedding invitation.
+  Ivory paper with a fine grain, burgundy for buttons and links (the wax seal), sage green and a
+  little gold for decoration. Headings are in Cormorant Garamond, names in Pinyon Script (a
+  calligraphy hand, only ever used big), and everything else in Jost, which stays easy to read
+  on a phone. Dark mode is the evening reception: aubergine paper, rose and candle-gold.
+  Text colours pass WCAG AA in both themes.
+*/
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --color-page: #f6efe2; /* ivory paper */
+  --color-card: #fffdf8;
+  --color-ink: #2b1f1e;
+  --color-ink-soft: #675650; /* quieter text (passes AA on page and card) */
+  --color-line: #e5d6bf;
+  --color-brand: #7a1f2e; /* burgundy wax: buttons, links, the chosen answer */
+  --color-on-brand: #fff8ee;
+  --color-brand-soft: #f4e3de;
+  --color-sage: #8a9b76; /* decoration only */
+  --color-sage-soft: #e3e9d8;
+  --color-sage-deep: #44582f; /* sage as text */
+  --color-gold: #b3904f; /* decoration only: rules, borders */
+  --color-gold-text: #78591f;
+  --color-good: #3f5a2c;
+  --color-alert: #a3122a;
+  --color-alert-soft: #fbe5e8;
+
+  --font-sans: var(--font-jost, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant, Georgia), Georgia, "Times New Roman", serif;
+  --font-script: var(--font-pinyon, "Snell Roundhand"), "Snell Roundhand", "Brush Script MT", cursive;
+}
+
+:root[data-theme="dark"] {
+  --color-page: #1c1417;
+  --color-card: #271d21;
+  --color-ink: #f6ebdf;
+  --color-ink-soft: #cdb9ae;
+  --color-line: #45342f;
+  --color-brand: #ec9fa9;
+  --color-on-brand: #2a0c12;
+  --color-brand-soft: #3e2329;
+  --color-sage: #8a9b76;
+  --color-sage-soft: #2c3425;
+  --color-sage-deep: #b4c79d;
+  --color-gold: #d1ab68;
+  --color-gold-text: #dcb978;
+  --color-good: #b4c79d;
+  --color-alert: #ff8fa0;
+  --color-alert-soft: #3d1a22;
+  color-scheme: dark;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-page);
+  background-image: var(--grain);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A fine paper grain, drawn by the browser (no image to download) */
+:root {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .33 0 0 0 0 .2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] {
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .9 0 0 0 0 .8 0 0 0 .035 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Headings: Cormorant. Unlayered, so it wins over Tailwind's weight classes. */
+h1,
+h2,
+h3,
+.font-serif {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: 0;
+  /* Cormorant's default figures are old-style (a 1 looks like a small capital I): use full-height ones */
+  font-variant-numeric: lining-nums;
+}
+h1 em,
+h2 em {
+  font-style: italic;
+  color: var(--color-brand);
+}
+.font-script {
+  font-family: var(--font-script);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* Small capitals line above a heading */
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-gold-text);
+}
+
+@layer components {
+  .tool {
+    display: inline-flex;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    color: var(--color-ink-soft);
+  }
+  .tool:hover {
+    background: var(--color-brand-soft);
+    color: var(--color-brand);
+  }
+  .field {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-card);
+    color: var(--color-ink);
+    padding: 0.65rem 0.85rem;
+    font-size: 16px; /* 16px stops phones zooming in when you tap a box */
+  }
+  .field:focus {
+    border-color: var(--color-brand);
+    outline: none;
+  }
+  .field::placeholder {
+    color: var(--color-ink-soft);
+    opacity: 0.8;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.7rem 1.4rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    background: var(--color-brand);
+    color: var(--color-on-brand);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 6px 14px -8px var(--color-brand);
+  }
+  .btn:hover {
+    filter: brightness(1.1);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+  }
+  .btn-quiet {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    padding: 0.6rem 1.1rem;
+    font-weight: 500;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+  .btn-quiet:hover {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+  .btn-quiet:disabled {
+    opacity: 0.55;
+  }
+  /* Stationery: a card with a fine gold line set inside its edge */
+  .invite {
+    position: relative;
+    border-radius: 6px;
+    background-color: var(--color-card);
+    background-image: var(--grain);
+    border: 1px solid var(--color-line);
+    box-shadow: 0 24px 40px -30px rgb(60 20 25 / 0.55), 0 2px 0 rgb(255 255 255 / 0.5) inset;
+  }
+  .invite::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 1px solid var(--color-gold);
+    border-radius: 3px;
+    opacity: 0.55;
+    pointer-events: none;
+  }
+  .plain-card {
+    border-radius: 6px;
+    background: var(--color-card);
+    border: 1px solid var(--color-line);
+  }
+  /* One of the three answers on the reply card */
+  .choice {
+    display: flex;
+    cursor: pointer;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-card);
+    padding: 0.8rem 1rem;
+    text-align: left;
+  }
+  .choice:hover {
+    border-color: var(--color-brand);
+  }
+  .choice[aria-checked="true"] {
+    border-color: var(--color-brand);
+    background: var(--color-brand-soft);
+  }
+  .choice .dot {
+    display: grid;
+    height: 1.25rem;
+    width: 1.25rem;
+    flex: none;
+    place-items: center;
+    border-radius: 9999px;
+    border: 1.5px solid var(--color-ink-soft);
+  }
+  .choice[aria-checked="true"] .dot {
+    border-color: var(--color-brand);
+    background: var(--color-brand);
+    color: var(--color-on-brand);
+  }
+  .chip {
+    border-radius: 9999px;
+    border: 1.5px solid var(--color-line);
+    background: var(--color-card);
+    padding: 0.35rem 0.85rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  .chip:hover {
+    border-color: var(--color-brand);
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: var(--color-on-brand);
+  }
+  .tab {
+    border-bottom: 2px solid transparent;
+    padding: 0.6rem 0.25rem;
+    font-weight: 500;
+    color: var(--color-ink-soft);
+  }
+  .tab:hover {
+    color: var(--color-brand);
+  }
+  .tab[aria-selected="true"] {
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+}
+
+/* A thin gold rule with a diamond in the middle, between parts of an invitation */
+.flourish {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-gold);
+}
+.flourish::before,
+.flourish::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, var(--color-gold));
+}
+.flourish::after {
+  transform: scaleX(-1);
+}
+
+/* Soft sage and blush light behind the sign-in card */
+.garden {
+  background-color: var(--color-page);
+  background-image:
+    radial-gradient(38% 46% at 12% 18%, rgb(138 155 118 / 0.28), transparent 70%),
+    radial-gradient(34% 44% at 88% 86%, rgb(122 31 46 / 0.12), transparent 70%), var(--grain);
+}
+:root[data-theme="dark"] .garden {
+  background-image:
+    radial-gradient(38% 46% at 12% 18%, rgb(138 155 118 / 0.14), transparent 70%),
+    radial-gradient(34% 44% at 88% 86%, rgb(236 159 169 / 0.1), transparent 70%), var(--grain);
+}
+
+/* Cards that settle onto the page, and a toast that rises. Both are off for people who ask for less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.45s ease-out both;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+}
+
+/* Before Firebase has checked who's signed in, the page has both the loading screen and the
+   sign-in screen; the hint from app/layout.tsx picks which one shows (see lib/auth.ts). */
+html[data-signed-in] .gate-login,
+html:not([data-signed-in]) .gate-splash {
+  display: none;
+}
+
+/* The printable "Scan to reply" card */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000;
+  }
+  .print-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+}

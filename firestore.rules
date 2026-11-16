@@ -1,0 +1,179 @@
+rules_version = '2';
+
+// RSVPme's security rules: who can read and change what. Paste them into
+// Firebase → Firestore Database → Rules, and press Publish.
+//
+// - Anyone with the invitation link can read the event (when, where, the note) and how many seats
+//   are taken. The seat count has no names on it.
+// - A reply (a name, yes/maybe/no, how many are coming, food and needs) can only be read by the
+//   host and the person who sent it.
+// - A guest (with a guest account) can do exactly one thing: answer for themselves, and change their
+//   own answer. The seats taken can only change together with their own reply, and never beyond the
+//   event's number of seats.
+// - Everything else is the host's.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function eventPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId);
+    }
+    function guestPath(eventId, id) {
+      return /databases/$(database)/documents/events/$(eventId)/guests/$(id);
+    }
+    function replyPath(eventId, id) {
+      return /databases/$(database)/documents/events/$(eventId)/replies/$(id);
+    }
+    function statsPath(eventId) {
+      return /databases/$(database)/documents/events/$(eventId)/stats/totals;
+    }
+    function ownsEvent(eventId) {
+      return signedIn() && get(eventPath(eventId)).data.ownerId == request.auth.uid;
+    }
+    // The seats a reply takes: its people when the answer is yes, otherwise none
+    function yesSeats(d) {
+      return d.answer == 'yes' ? d.party : 0;
+    }
+
+    function validEvent(d) {
+      return d.keys().hasOnly(['ownerId', 'title', 'kind', 'hosts', 'date', 'time', 'venue', 'address', 'note', 'code', 'replyBy', 'capacity', 'maxParty', 'open', 'createdAt'])
+        && d.ownerId is string
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 60
+        && d.kind in ['wedding', 'engagement', 'birthday', 'baby', 'other']
+        && d.hosts is string && d.hosts.size() <= 60
+        && d.date is string && d.date.size() == 10
+        && d.time is int && d.time >= 0 && d.time < 1440
+        && d.venue is string && d.venue.size() <= 60
+        && d.address is string && d.address.size() <= 100
+        && d.note is string && d.note.size() <= 200
+        && d.code is string && d.code.size() == 6
+        && d.replyBy is string && (d.replyBy.size() == 0 || d.replyBy.size() == 10)
+        && d.capacity is int && d.capacity >= 0 && d.capacity <= 2000
+        && d.maxParty is int && d.maxParty >= 1 && d.maxParty <= 10
+        && d.open is bool
+        && d.createdAt is number;
+    }
+
+    match /events/{eventId} {
+      allow get: if true;
+      allow list: if signedIn() && resource.data.ownerId == request.auth.uid;
+      // A new event starts with its seat count at zero, made in the same step
+      allow create: if signedIn() && validEvent(request.resource.data) && request.resource.data.ownerId == request.auth.uid
+        && existsAfter(statsPath(eventId)) && getAfter(statsPath(eventId)).data.seats == 0;
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && validEvent(request.resource.data);
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Someone the host invited. A personal link carries the id, which can't be guessed, so
+      // anyone signed in can read one by its id, but only the host can list them.
+      match /guests/{guestId} {
+        function validGuest(d) {
+          return d.keys().hasOnly(['name', 'party', 'createdAt'])
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+            && d.party is int && d.party >= 1 && d.party <= 10
+            && d.createdAt is number;
+        }
+        allow get: if signedIn();
+        allow list: if ownsEvent(eventId);
+        allow create, update: if ownsEvent(eventId) && validGuest(request.resource.data);
+        allow delete: if ownsEvent(eventId);
+      }
+
+      // A guest's phone number: the host's alone
+      match /contacts/{guestId} {
+        allow read: if ownsEvent(eventId);
+        allow create, update: if ownsEvent(eventId)
+          && request.resource.data.keys().hasOnly(['phone'])
+          && request.resource.data.phone is string && request.resource.data.phone.size() <= 20;
+        allow delete: if ownsEvent(eventId);
+      }
+
+      match /replies/{replyId} {
+        function validReply(d) {
+          return d.keys().hasOnly(['uid', 'guestId', 'name', 'answer', 'party', 'diet', 'message', 'byHost', 'createdAt', 'updatedAt'])
+            && d.uid is string
+            && d.guestId is string && d.guestId.size() <= 40
+            && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+            && d.answer in ['yes', 'maybe', 'no']
+            && d.party is int && d.party >= 0 && d.party <= 10
+            && (d.answer == 'no' ? d.party == 0 : d.party >= 1)
+            && d.diet is string && d.diet.size() <= 60
+            && d.message is string && d.message.size() <= 140
+            && d.byHost is bool
+            && d.createdAt is number
+            && d.updatedAt is number;
+        }
+
+        // A reply that doesn't exist yet can be "read" (it's just not there), so a guest can look
+        // for their own answer. Someone else's answer is refused: that's how a personal link used
+        // on a second phone finds out it was already answered.
+        allow get: if signedIn() && (resource == null || resource.data.uid == request.auth.uid || ownsEvent(eventId));
+        allow list: if ownsEvent(eventId);
+
+        // The host can write any reply. A guest answers once, as themselves: the reply is named
+        // after their invitation (or, with no invitation, their own account), the event is taking
+        // replies, and the seat count moves by exactly the seats this reply takes.
+        allow create: if signedIn() && validReply(request.resource.data) && (
+          ownsEvent(eventId)
+          || (request.resource.data.uid == request.auth.uid
+            && request.resource.data.byHost == false
+            && replyId == (request.resource.data.guestId == '' ? request.auth.uid : request.resource.data.guestId)
+            && (request.resource.data.guestId == '' || exists(guestPath(eventId, request.resource.data.guestId)))
+            && get(eventPath(eventId)).data.open == true
+            && getAfter(statsPath(eventId)).data.seats == get(statsPath(eventId)).data.seats + yesSeats(request.resource.data)));
+
+        // A guest can change their own answer (the same seats can't be counted twice)
+        allow update: if signedIn() && validReply(request.resource.data)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.guestId == resource.data.guestId
+          && request.resource.data.createdAt == resource.data.createdAt && (
+          ownsEvent(eventId)
+          || (resource.data.uid == request.auth.uid
+            && request.resource.data.byHost == false
+            && get(eventPath(eventId)).data.open == true
+            && getAfter(statsPath(eventId)).data.seats == get(statsPath(eventId)).data.seats + yesSeats(request.resource.data) - yesSeats(resource.data)));
+
+        allow delete: if ownsEvent(eventId);
+      }
+
+      // How many seats are taken. "replyId" says which reply moved it, so a guest's change can be
+      // checked against exactly that reply. The seats can't go past the event's number of seats.
+      match /stats/{statId} {
+        function mine(eid, d) {
+          return getAfter(replyPath(eid, d.replyId)).data;
+        }
+        allow read: if true;
+        allow create: if signedIn() && statId == 'totals'
+          && request.resource.data.keys().hasOnly(['seats', 'replyId'])
+          && request.resource.data.seats == 0 && request.resource.data.replyId == ''
+          && getAfter(eventPath(eventId)).data.ownerId == request.auth.uid;
+        allow update: if signedIn() && statId == 'totals'
+          && request.resource.data.keys().hasOnly(['seats', 'replyId'])
+          && request.resource.data.seats is int && request.resource.data.seats >= 0
+          && request.resource.data.replyId is string && (
+          ownsEvent(eventId)
+          || (existsAfter(replyPath(eventId, request.resource.data.replyId))
+            && mine(eventId, request.resource.data).uid == request.auth.uid
+            && request.resource.data.seats == resource.data.seats + yesSeats(mine(eventId, request.resource.data))
+              - (exists(replyPath(eventId, request.resource.data.replyId)) ? yesSeats(get(replyPath(eventId, request.resource.data.replyId)).data) : 0)
+            && (get(eventPath(eventId)).data.capacity == 0
+              || request.resource.data.seats <= get(eventPath(eventId)).data.capacity
+              || request.resource.data.seats <= resource.data.seats)));
+        allow delete: if ownsEvent(eventId);
+      }
+    }
+
+    // Invitation codes: anyone can look one up (that's what the link does), only the host makes them
+    match /codes/{code} {
+      allow get: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['eventId'])
+        && getAfter(eventPath(request.resource.data.eventId)).data.ownerId == request.auth.uid
+        && getAfter(eventPath(request.resource.data.eventId)).data.code == code;
+      allow delete: if signedIn() && get(eventPath(resource.data.eventId)).data.ownerId == request.auth.uid;
+    }
+  }
+}
