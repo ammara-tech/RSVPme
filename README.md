@@ -5,7 +5,7 @@ function. Guests say yes, maybe or no on their phone, with who they're bringing 
 list, the seats left, a food and needs count, and who still hasn't answered, with a WhatsApp reminder for each of
 them. The seats can never be oversold.
 
-**Live site:** add your Vercel address here once it's deployed
+**Live site:** https://rsv-pme.vercel.app/
 
 Built by Ammara Badat as part of my portfolio. It uses Firebase, like my other apps since PaperTrail.
 
