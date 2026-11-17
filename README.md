@@ -108,6 +108,19 @@ pasted guest lists, WhatsApp numbers and messages, the calendar file, the spread
 neutralised), invitation codes, the QR codes (checked square for square against the same library's separate Python
 version), and reading saved data safely. GitHub runs them on every push (`.github/workflows/tests.yml`).
 
+## Lighthouse
+Checked on 17 November 2026 with [PageSpeed Insights](https://pagespeed.web.dev) on the live sign-in page
+(the pages after it need an account, so PageSpeed can't open them):
+
+| | Performance | Accessibility | Best Practices | SEO |
+|---|---|---|---|---|
+| **Mobile** | 98 | 100 | 100 | 100 |
+| **Desktop** | 100 | 100 | 100 | 100 |
+
+It also passed both Agentic Browsing checks (2/2). The fonts come through `next/font`, the paper grain is drawn by
+the browser with no image to download, and the invitation cards are plain HTML and CSS, so there is very little for
+the phone to load.
+
 ## Setup (run it yourself)
 1. **Firebase:** create a project at [console.firebase.google.com](https://console.firebase.google.com).
    - Authentication → Get started → turn on **Email/Password**, **Google** and **Anonymous** (guests' accounts and
